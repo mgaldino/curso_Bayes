@@ -72,4 +72,53 @@ prior1 <- c(set_prior("normal(-1,10)", class = "b", coef = "ratio_permit_totals"
             set_prior("normal(1,10)", class = "b", coef = "all_male_participants"),
             set_prior("normal(0,10)", class = "Intercept"))
 
+## modelo hierárquico por ano
+guns <- guns %>%
+  ungroup() %>%
+  mutate(ano = as.factor(str_sub(month, 1, 4)))
 
+set.seed(2)
+reg_bayes_ano <- brms::brm(num_mortes ~ ratio_permit_totals + all_male_participants + 1 + (1|ano) , 
+                           data=guns)
+
+# warning: 2 divergent transitions etc.
+# nesse caso, vamos seguir a recomendação e colocar delta = .95 (deve ser entre .8 e 1)
+# com o argumento control
+
+set.seed(2)
+reg_bayes_ano <- brms::brm(num_mortes ~ 1 + (1|ano) + ratio_permit_totals + all_male_participants, 
+                           data=guns, control = list(adapt_delta = .95 ), iter=3000)
+
+summary(reg_bayes_ano)
+summary(reg_bayes_ano)$random
+summary(reg_bayes_ano)$fixed
+summary(reg_bayes_ano)$spec_pars
+coef(reg_bayes_ano)$ano[,,1]
+plot(reg_bayes_ano)
+
+pp_check(reg_bayes_ano)
+
+set.seed(2)
+reg_bayes_state <- brms::brm(num_mortes ~ ratio_permit_totals + all_male_participants + 1 + (1|state) , 
+                           data=guns, iter = 4000)
+set.seed(2)
+reg_bayes_state_ano <- brms::brm(num_mortes ~ ratio_permit_totals + all_male_participants + 1 + (1|state) +  (1|ano), 
+                           data=guns, iter = 4000)
+
+## PP check sempre mostra o mesmo problema
+## se olhar historgrama, verá que é aprox. log normal, com média 21.8
+hist(guns$num_mortes)
+# 2 caminhos: 1. modelar Y como lognormal; 2. passar o log e modelar como normal.
+# sobre 2: Se y ~Lognormal, então log(y) ~ Normal
+y <- rlnorm(1000, log(21.82), .8)
+hist(y)
+hist(log(y))
+guns <- guns %>%
+  mutate(log_mortes = log(num_mortes + exp(1))) # + exp() pq n existe log de 0
+
+reg_bayes_log <- brms::brm(log_mortes~ ratio_permit_totals + all_male_participants, 
+                       data=guns)
+
+summary(reg_bayes_log)
+
+pp_check(reg_bayes_log)
