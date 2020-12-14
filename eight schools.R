@@ -26,6 +26,7 @@ get_prior(y|se(sigma) ~ 1 + (1|J), data = schools_dat)
 set.seed(2)
 prior_tau <- set_prior("normal(0,.2)", class = "sd", coef = "Intercept", group = "J")
 
+# especificar melhor aqui.
 model2 <- brm(y|se(sigma) ~ 1 + (1|J), data = schools_dat,
               iter = 5000, prior = prior_tau)
 summary(model2)
